@@ -45,6 +45,9 @@ fun MovieListScreen(
             contentAlignment = Alignment.Center
         ) {
             CircularProgressIndicator()
+
+
+
         }
         return
     }
