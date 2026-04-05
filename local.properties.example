@@ -1,0 +1,5 @@
+## This file contains the configuration of the MovieCatalog project
+## Copy this file to local.properties and replace the values with your own
+
+# TMDB API Key - Get your API key from https://www.themoviedb.org/settings/api
+TMDB_API_KEY=your_api_key_here
