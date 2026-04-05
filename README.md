@@ -69,10 +69,15 @@ com.moviescatalog
 
 ## 🔧 Setup Instructions
 1. **Clone the repository**
-2. Open with **Android Studio Hedgehog or newer**
-3. Make sure Java 17 is installed (toolchain is set in Gradle)
-4. Add your own TMDB API Key in `core/di/UseCaseModule.kt` if needed
-5. Run the app
+2. **Copy `local.properties.example` to `local.properties`**
+3. **Add your TMDB API Key** to `local.properties`:
+   ```properties
+   TMDB_API_KEY=your_api_key_here
+   ```
+   Get your API key from [TMDB API Settings](https://www.themoviedb.org/settings/api)
+4. Open with **Android Studio Hedgehog or newer**
+5. Make sure Java 17 is installed (toolchain is set in Gradle)
+6. Run the app
 
 ---
 

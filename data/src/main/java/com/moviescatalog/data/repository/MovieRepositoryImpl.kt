@@ -6,6 +6,7 @@ import com.moviescatalog.data.local.dto.toDomainModel
 import com.moviescatalog.data.local.dto.toEntity
 import com.moviescatalog.data.remote.api.MovieApiService
 import com.moviescatalog.data.remote.dto.toDomainModel
+import com.moviescatalog.data.util.ErrorHandler
 import com.moviescatalog.domain.model.Movie
 import com.moviescatalog.domain.model.MovieCategory
 import com.moviescatalog.domain.repository.MovieRepository
@@ -17,39 +18,57 @@ class MovieRepositoryImpl @Inject constructor(
 ) : MovieRepository {
 
     override suspend fun getMovies(sortBy: String, page: Int): Result<List<Movie>> {
-        return try {
-            // 1. Try to get movies from the database
-            val cachedMovies = movieDao.getMoviesByCategory(sortBy)
+        // 1. Try to get movies from the database first (cache-first strategy)
+        val cacheResult = ErrorHandler.safeDatabaseCall {
+            movieDao.getMoviesByCategory(sortBy)
+        }
+
+        cacheResult.getOrNull()?.let { cachedMovies ->
             if (cachedMovies.isNotEmpty()) {
                 return Result.success(cachedMovies.map { it.toDomainModel() })
             }
+        }
 
-            // 2. If cache is empty, fetch from the API
+        // 2. If cache is empty or failed, fetch from the API
+        return ErrorHandler.safeApiCall {
             val response = api.discoverMovies(sortBy, page)
             val movies = response.results.map { it.toEntity(sortBy) }
-            movieDao.insertMovies(movies)
 
-            Result.success(movies.map { it.toDomainModel() }) // Return as domain model
-        } catch (e: Exception) {
-            Result.failure(e)
+            // 3. Cache the results (ignore cache write errors)
+            try {
+                movieDao.insertMovies(movies)
+            } catch (e: Exception) {
+                // Log error but don't fail the operation
+                // In a production app, you'd use a proper logging framework here
+            }
+
+            movies.map { it.toDomainModel() }
         }
     }
 
     override suspend fun getMovieById(movieId: Int): Result<Movie> {
-        return try {
-            val cachedMovie = movieDao.getMovieById(movieId)
-            if (cachedMovie != null) {
-                // Return cached movie if exists
-                return Result.success(cachedMovie.toDomainModel())
-            }
+        // 1. Try to get movie from cache first
+        val cacheResult = ErrorHandler.safeDatabaseCall {
+            movieDao.getMovieById(movieId)
+        }
 
+        cacheResult.getOrNull()?.let { cachedMovie ->
+            return Result.success(cachedMovie.toDomainModel())
+        }
+
+        // 2. If not in cache, fetch from API
+        return ErrorHandler.safeApiCall {
             val response = api.getMovieById(movieId)
 
-            movieDao.insertMovie(response.toEntity(MovieCategory.POPULAR.name))
+            // 3. Cache the result (ignore cache write errors)
+            try {
+                movieDao.insertMovie(response.toEntity(MovieCategory.POPULAR.name))
+            } catch (e: Exception) {
+                // Log error but don't fail the operation
+                // In a production app, you'd use a proper logging framework here
+            }
 
-            Result.success(response.toDomainModel())
-        } catch (e: Exception) {
-            Result.failure(e)
+            response.toDomainModel()
         }
     }
 

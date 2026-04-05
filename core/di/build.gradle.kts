@@ -5,6 +5,14 @@ plugins {
     alias(libs.plugins.google.devtools.ksp)
 }
 
+// Load API key from local.properties
+val localProperties = java.util.Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        load(localPropertiesFile.inputStream())
+    }
+}
+
 android {
     namespace = "com.moviescatalog.core.di"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -12,7 +20,10 @@ android {
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.compileSdk.get().toInt()
-        buildConfigField("String", "TMDB_API_KEY", "\"7a07a6c0e2f26829c38f3aeb0793fa43\"")
+
+        // Read API key from local.properties or use empty string as fallback
+        val tmdbApiKey = localProperties.getProperty("TMDB_API_KEY") ?: ""
+        buildConfigField("String", "TMDB_API_KEY", "\"$tmdbApiKey\"")
     }
 
     buildFeatures {
